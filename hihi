@@ -1,8 +1,33 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Networking = require(ReplicatedStorage.SharedModules.Networking)
 local Packet = require(ReplicatedStorage.SharedModules.Packet)
 
-local SendBatch = Packet.Mailbox.SendBatch
+-- Kiểm tra cấu trúc
+print("Packet:", Packet)
+print("Packet keys:", table.keys(Packet))
+
+local SendBatch
+
+-- Thử các trường hợp
+if Packet.Mailbox then
+    SendBatch = Packet.Mailbox.SendBatch
+elseif Packet.Mail then
+    SendBatch = Packet.Mail.SendBatch
+else
+    -- Tìm key chứa SendBatch
+    for key, value in pairs(Packet) do
+        if type(value) == "table" and value.SendBatch then
+            print("Found SendBatch in:", key)
+            SendBatch = value.SendBatch
+            break
+        end
+    end
+end
+
+print("SendBatch:", SendBatch)
+
+if not SendBatch then
+    error("Khong tim thay SendBatch!")
+end
 
 local function SendBatchMail(targetUserId, batchData, message)
     local success, result = SendBatch:Fire(targetUserId, batchData, message or "")
@@ -38,4 +63,4 @@ return {
     ClaimMail = ClaimMail,
     DeclineMail = DeclineMail,
     ListenNewMail = ListenNewMail,
-  }
+}
