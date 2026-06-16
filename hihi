@@ -1,0 +1,41 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Networking = require(ReplicatedStorage.SharedModules.Networking)
+local Packet = require(ReplicatedStorage.SharedModules.Packet)
+
+local SendBatch = Packet.Mailbox.SendBatch
+
+local function SendBatchMail(targetUserId, batchData, message)
+    local success, result = SendBatch:Fire(targetUserId, batchData, message or "")
+    return success, result
+end
+
+local function LookupPlayer(username)
+    local userId, displayName = Packet.Mailbox.LookupPlayer:Fire(username)
+    return userId, displayName
+end
+
+local function OpenInbox()
+    return Packet.Mailbox.OpenInbox:Fire()
+end
+
+local function ClaimMail(mailId)
+    local success, errorMsg = Packet.Mailbox.Claim:Fire(mailId)
+    return success, errorMsg
+end
+
+local function DeclineMail(mailId)
+    Packet.Mailbox.Decline:Fire(mailId)
+end
+
+local function ListenNewMail(callback)
+    Packet.Mailbox.Updated.OnClientEvent:Connect(callback)
+end
+
+return {
+    SendBatch = SendBatchMail,
+    LookupPlayer = LookupPlayer,
+    OpenInbox = OpenInbox,
+    ClaimMail = ClaimMail,
+    DeclineMail = DeclineMail,
+    ListenNewMail = ListenNewMail,
+  }
