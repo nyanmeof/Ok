@@ -31,73 +31,100 @@ end
 
 while task.wait(1) do
     local pets = wildPetRef:GetChildren()
-    
-    for _, pet in ipairs(pets) do
-        if not pet or not pet:IsA("BasePart") and not pet:IsA("Model") then
-            continue
-        end
-        
-        local rarity = pet:GetAttribute("Rarity")
-        local petName = pet:GetAttribute("PetName")
 
-        if (rarity == "Mythic" or rarity == "Super")
-            and petName
-            and petName ~= ""
-            and not sent[pet] then
+    for _, pet in ipairs(pets) do  
+        if not pet or not pet:IsA("BasePart") and not pet:IsA("Model") then  
+            continue  
+        end  
+          
+        local rarity = pet:GetAttribute("Rarity")  
+        local petName = pet:GetAttribute("PetName")  
 
-            sent[pet] = true
+        if (rarity == "Mythic" or rarity == "Super")  
+            and petName  
+            and petName ~= ""  
+            and not sent[pet] then  
 
-            local placeId = game.PlaceId
-            local jobId = game.JobId
+            sent[pet] = true  
 
-            local joinScript = string.format(
-                'game:GetService("TeleportService"):TeleportToPlaceInstance(%d, "%s", game.Players.LocalPlayer)',
-                placeId,
-                jobId
-            )
+            local placeId = game.PlaceId  
+            local jobId = game.JobId  
 
-            local escapedPetName = petName:gsub('"', '\\"'):gsub("\n", "\\n")
+            local joinScript = string.format(  
+                'game:GetService("TeleportService"):TeleportToPlaceInstance(%d, "%s", game.Players.LocalPlayer)',  
+                placeId,  
+                jobId  
+            )  
+
+            local escapedPetName = petName:gsub('"', '\\"'):gsub("\n", "\\n")  
             
-            -- Data với username Roblox
+            -- Tạo Embed
+            local embedData = {
+                ["title"] = "Rare Pet Detected",
+                ["color"] = 0x00FF00,
+                ["fields"] = {
+                    {
+                        ["name"] = "Roblox Username",
+                        ["value"] = "`" .. robloxUsername .. "`",
+                        ["inline"] = true
+                    },
+                    {
+                        ["name"] = "User ID",
+                        ["value"] = "`" .. userId .. "`",
+                        ["inline"] = true
+                    },
+                    {
+                        ["name"] = "Pet",
+                        ["value"] = "**" .. escapedPetName .. "**",
+                        ["inline"] = true
+                    },
+                    {
+                        ["name"] = "Rarity",
+                        ["value"] = "**" .. rarity .. "**",
+                        ["inline"] = true
+                    },
+                    {
+                        ["name"] = "JobId",
+                        ["value"] = "`" .. jobId .. "`",
+                        ["inline"] = false
+                    },
+                    {
+                        ["name"] = "Join Script",
+                        ["value"] = "```lua\n" .. joinScript .. "\n```",
+                        ["inline"] = false
+                    }
+                },
+                ["footer"] = {
+                    ["text"] = "Pet Detector"
+                }
+            }
+            
+            -- Data với embed
             local data = {
                 username = "Pet Detector",
-                content = string.format(
-                    "## 🎉 **Rare Pet Detected!** 🎉\n\n" ..
-                    "**Roblox Username:** `%s`\n" ..
-                    "**User ID:** `%d`\n" ..
-                    "**Pet:** %s\n" ..
-                    "**Rarity:** %s\n" ..
-                    "**JobId:** `%s`\n\n" ..
-                    "**Join Script:**\n```lua\n%s\n```",
-                    robloxUsername,
-                    userId,
-                    escapedPetName,
-                    rarity,
-                    jobId,
-                    joinScript
-                )
-            }
+                embeds = {embedData}
+            }  
 
-            local success, err = pcall(function()
-                request({
-                    Url = webhook,
-                    Method = "POST",
-                    Headers = {
-                        ["Content-Type"] = "application/json"
-                    },
-                    Body = HttpService:JSONEncode(data)
-                })
-            end)
-            
-            if not success then
-                warn("Failed to send webhook: " .. tostring(err))
-            end
-        end
-    end
+            local success, err = pcall(function()  
+                request({  
+                    Url = webhook,  
+                    Method = "POST",  
+                    Headers = {  
+                        ["Content-Type"] = "application/json"  
+                    },  
+                    Body = HttpService:JSONEncode(data)  
+                })  
+            end)  
+              
+            if not success then  
+                warn("Failed to send webhook: " .. tostring(err))  
+            end  
+        end  
+    end  
 
-    for pet, _ in pairs(sent) do
-        if not pet or not pet.Parent then
-            sent[pet] = nil
-        end
+    for pet, _ in pairs(sent) do  
+        if not pet or not pet.Parent then  
+            sent[pet] = nil  
+        end  
     end
 end
