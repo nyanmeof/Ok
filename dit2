@@ -1,0 +1,130 @@
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+-- Lấy thông tin người chơi Roblox
+local player = Players.LocalPlayer
+local robloxUsername = player.Name
+local robloxDisplayName = player.DisplayName
+local userId = player.UserId
+
+-- Kiểm tra request method
+local request = syn and syn.request or request or http_request or nil
+
+if not request then
+    warn("No request method found for this executor")
+    return
+end
+
+local webhook = "https://discord.com/api/webhooks/1517819371177775275/sxmTITXPut88f7jgpctC1DRzMph7QRzaDtB76KAeh5zsQSKj0GIo27vvAaQ4VqpPSSNj"
+
+local sent = {}
+
+local wildPetRef = workspace:FindFirstChild("Map")
+if wildPetRef then
+    wildPetRef = wildPetRef:FindFirstChild("WildPetRef")
+end
+
+if not wildPetRef then
+    warn("Could not find workspace.Map.WildPetRef")
+    return
+end
+
+while task.wait(1) do
+    local pets = wildPetRef:GetChildren()
+
+    for _, pet in ipairs(pets) do  
+        if not pet or not pet:IsA("BasePart") and not pet:IsA("Model") then  
+            continue  
+        end  
+          
+        local rarity = pet:GetAttribute("Rarity")  
+        local petName = pet:GetAttribute("PetName")  
+
+        if (rarity == "Mythic" or rarity == "Super")  
+            and petName  
+            and petName ~= ""  
+            and not sent[pet] then  
+
+            sent[pet] = true  
+
+            local placeId = game.PlaceId  
+            local jobId = game.JobId  
+
+            local joinScript = string.format(  
+                'game:GetService("TeleportService"):TeleportToPlaceInstance(%d, "%s", game.Players.LocalPlayer)',  
+                placeId,  
+                jobId  
+            )  
+
+            local escapedPetName = petName:gsub('"', '\\"'):gsub("\n", "\\n")  
+            
+            -- Tạo Embed
+            local embedData = {
+                ["title"] = "Rare Pet Detected",
+                ["color"] = 0x00FF00,
+                ["fields"] = {
+                    {
+                        ["name"] = "Roblox Username",
+                        ["value"] = "`" .. robloxUsername .. "`",
+                        ["inline"] = true
+                    },
+                    {
+                        ["name"] = "User ID",
+                        ["value"] = "`" .. userId .. "`",
+                        ["inline"] = true
+                    },
+                    {
+                        ["name"] = "Pet",
+                        ["value"] = "**" .. escapedPetName .. "**",
+                        ["inline"] = true
+                    },
+                    {
+                        ["name"] = "Rarity",
+                        ["value"] = "**" .. rarity .. "**",
+                        ["inline"] = true
+                    },
+                    {
+                        ["name"] = "JobId",
+                        ["value"] = "`" .. jobId .. "`",
+                        ["inline"] = false
+                    },
+                    {
+                        ["name"] = "Join Script",
+                        ["value"] = "```lua\n" .. joinScript .. "\n```",
+                        ["inline"] = false
+                    }
+                },
+                ["footer"] = {
+                    ["text"] = "Pet Detector"
+                }
+            }
+            
+            -- Data với embed
+            local data = {
+                username = "Pet Detector",
+                embeds = {embedData}
+            }  
+
+            local success, err = pcall(function()  
+                request({  
+                    Url = webhook,  
+                    Method = "POST",  
+                    Headers = {  
+                        ["Content-Type"] = "application/json"  
+                    },  
+                    Body = HttpService:JSONEncode(data)  
+                })  
+            end)  
+              
+            if not success then  
+                warn("Failed to send webhook: " .. tostring(err))  
+            end  
+        end  
+    end  
+
+    for pet, _ in pairs(sent) do  
+        if not pet or not pet.Parent then  
+            sent[pet] = nil  
+        end  
+    end
+end
